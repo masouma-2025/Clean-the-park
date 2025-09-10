@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clean the Park!🧹</title>
+<style>
+  * { margin: 0;
+     padding: 0;
+     box-sizing: border-box; }
+
+  body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    background: linear-gradient(to bottom, #4dff4d, #dcedc1);
+    font-family: Arial, sans-serif;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  h1 {
+    margin-top: 20px;
+    text-shadow: 2px 2px 5px #e9e9e9;
+    font-size: 2em;
+  }
+
+  #start-container {
+    margin-top: 30px;
+  }
+
+  #start-btn {
+    padding: 10px 20px;
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+  }
+
+  #bin {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    font-size: 50px;
+    padding: 10px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+  }
+
+  #message, #level, #score {
+    margin: 10px;
+    font-size: 20px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #333;
+  }
+
+  .trash {
+    position: absolute;
+    font-size: 40px;
+    cursor: pointer;
+    transition: transform 0.2s, top 0.2s, left 0.2s;
+  }
+
+</style>
+</head>
+<body>
+<h1>Clean the Park! 🌳🗑️</h1>
+
+<div id="level">Level: 1</div>
+<div id="score">Recycled: 0</div>
+<div id="message">Click the button to start the game.</div>
+<div id="start-container">
+  <button id="start-btn">Start Game</button>
+</div>
+
+<div id="bin">🗑️</div>
+
+<script>
+let level = 1;
+let trashCount = 3;
+let recycled = 0;
+let gameStarted = false;
+
+const trashTypes = ["🍌","🍕","💩","🥑","🤡","🥬","📃"];
+const bin = document.getElementById("bin");
+const messageEl = document.getElementById("message");
+const levelEl = document.getElementById("level");
+const scoreEl = document.getElementById("score");
+const startBtn = document.getElementById("start-btn");
+
+
+const bgMusic = new Audio("./photo/sound.mp3");
+bgMusic.loop = true;
+const collectSound = new Audio("./photo/collect.mp3");
+let musicStarted = false;
+
+function createTrash(num){
+  for(let i=0;i<num;i++){
+    const trash=document.createElement("div");
+    trash.classList.add("trash");
+    trash.textContent=trashTypes[Math.floor(Math.random()*trashTypes.length)];
+    
+    const size = Math.max(20, 40 - level*2);
+    trash.style.fontSize = size + "px";
+
+    trash.style.left=Math.random()*(window.innerWidth-100)+50+"px";
+    trash.style.top=Math.random()*(window.innerHeight-200)+100+"px";
+    document.body.appendChild(trash);
+    makeDraggable(trash);
+
+    trash.addEventListener("click",()=>{
+      recycled++;
+      scoreEl.textContent = `Recycled: ${recycled}`;
+      collectSound.currentTime=0; collectSound.play();
+      trash.remove();
+      if(document.querySelectorAll(".trash").length===0) levelUp();
+    });
+  }
+}
+
+function levelUp(){
+  level++;
+  trashCount++;
+  levelEl.textContent = "Level: " + level;
+  messageEl.textContent = "Level up! New trash incoming...";
+  setTimeout(()=>{
+    createTrash(trashCount);
+    messageEl.textContent="";
+  },1000);
+}
+
+function makeDraggable(trash){
+  trash.setAttribute("draggable",true);
+
+  trash.addEventListener("dragstart", e=>{ e.dataTransfer.setData("text/plain",null); trash.dataset.dragging="true"; });
+  trash.addEventListener("dragend", ()=>{ trash.dataset.dragging="false"; });
+
+  trash.addEventListener("touchstart", ()=>{ trash.dataset.dragging="true"; });
+  trash.addEventListener("touchmove", e=>{
+    e.preventDefault();
+    const touch=e.touches[0];
+    trash.style.left=(touch.clientX-20)+"px";
+    trash.style.top=(touch.clientY-20)+"px";
+  });
+  trash.addEventListener("touchend", ()=>{
+    const binRect = bin.getBoundingClientRect();
+    const trashRect = trash.getBoundingClientRect();
+    if (trashRect.left<binRect.right && trashRect.right>binRect.left && trashRect.top<binRect.bottom && trashRect.bottom>binRect.top){
+      recycled++; scoreEl.textContent=`Recycled: ${recycled}`;
+      collectSound.currentTime=0; collectSound.play();
+      animateBin();
+      trash.remove();
+      if(document.querySelectorAll(".trash").length===0) levelUp();
+    }
+    trash.dataset.dragging="false";
+  });
+}
+
+bin.addEventListener("dragover", e=> e.preventDefault());
+bin.addEventListener("drop", e=>{
+  e.preventDefault();
+  const draggingTrash=document.querySelector(".trash[data-dragging='true']");
+  if(draggingTrash){
+    recycled++; scoreEl.textContent=`Recycled: ${recycled}`;
+    collectSound.currentTime=0; collectSound.play();
+    animateBin();
+    draggingTrash.remove();
+    if(document.querySelectorAll(".trash").length===0) levelUp();
+  }
+});
+
+function animateBin(){
+  bin.style.transform="scale(1.2)";
+  bin.style.backgroundColor="#ffffb3";
+  setTimeout(()=>{ bin.style.transform="scale(1)"; bin.style.backgroundColor="rgba(255,255,255,0.7)"; },200);
+}
+
+function enableTrashEscape(){
+  document.addEventListener("mousemove", e=>{
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+    document.querySelectorAll(".trash").forEach(trash=>{
+      const rect = trash.getBoundingClientRect();
+      const trashX = rect.left + rect.width/2;
+      const trashY = rect.top + rect.height/2;
+      const dx = mouseX - trashX;
+      const dy = mouseY - trashY;
+      const distance = Math.hypot(dx,dy);
+      if(distance<80){
+        let moveX=-dx/distance*20;
+        let moveY=-dy/distance*20;
+        let newLeft=rect.left+moveX;
+        let newTop=rect.top+moveY;
+        if(newLeft<0)newLeft=0;
+        if(newLeft>window.innerWidth-rect.width)newLeft=window.innerWidth-rect.width;
+        if(newTop<0)newTop=0;
+        if(newTop>window.innerHeight-rect.height)newTop=window.innerHeight-rect.height;
+        trash.style.left=newLeft+"px";
+        trash.style.top=newTop+"px";
+        trash.style.transform=`rotate(${Math.random()*30-15}deg)`;
+      }
+    });
+  });
+}
+
+function randomChaos(){
+  if(Math.random()<0.01){
+    const paw=document.createElement("div");
+    paw.textContent="🐾";
+    paw.style.position="absolute";
+    paw.style.left=Math.random()*(window.innerWidth-50)+"px";
+    paw.style.top=Math.random()*(window.innerHeight-150)+"px";
+    paw.style.fontSize="30px";
+    document.body.appendChild(paw);
+    setTimeout(()=>paw.remove(),1000);
+
+    document.querySelectorAll(".trash").forEach(trash=>{
+      trash.style.left=Math.random()*(window.innerWidth-100)+50+"px";
+      trash.style.top=Math.random()*(window.innerHeight-200)+100+"px";
+    });
+  }
+  requestAnimationFrame(randomChaos);
+}
+
+startBtn.addEventListener("click", ()=>{
+  if(!musicStarted){ bgMusic.play(); musicStarted=true; }
+  if(!gameStarted){ gameStarted=true; enableTrashEscape(); randomChaos(); }
+
+  messageEl.textContent = "Drag or tap the trash into the bin! 🗑️";
+  startBtn.style.display = "none"; 
+
+  createTrash(trashCount);
+});
+
+</script>
+</body>
+</html>
